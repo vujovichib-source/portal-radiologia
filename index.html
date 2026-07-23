@@ -225,7 +225,7 @@ function render(){
 
 function publicUrl(path){
   if(!path) return null;
-  return sb.storage.from('informes').getPublicUrl(path).data.publicUrl;
+  return window.location.origin + '/archivo/' + path;
 }
 
 // Para .doc/.docx, los navegadores no pueden mostrarlos directo - los pasamos por el visor de Google Docs.
