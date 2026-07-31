@@ -520,6 +520,14 @@ function bindAdminEvents(){
     busy = false;
     if(rpcErr){ errMsg = 'El archivo se subió pero no se pudo vincular al paciente.'; render(); return; }
     successMsg = kind === 'imagen' ? 'Imagen subida correctamente.' : 'Informe subido correctamente.';
+
+    // Si con este archivo ya quedaron los dos (imagen + informe), avisamos al paciente por WhatsApp
+    const actualizado = patients.find(p => p.id === patientId);
+    const yaTeniaElOtro = actualizado && (kind === 'imagen' ? actualizado.informe_path : actualizado.imagen_path);
+    if(yaTeniaElOtro){
+      sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } }).catch(() => {});
+    }
+
     await loadPatients();
   }
 
@@ -653,7 +661,19 @@ async function init(){
     render();
   });
 
-  const wantsAcceso = window.location.pathname === '/acceso';
+  const path = window.location.pathname;
+  if(path.startsWith('/r/')){
+    const token = decodeURIComponent(path.slice(3)).trim();
+    view = 'patient';
+    render();
+    const { data, error } = await sb.rpc('buscar_por_token', { p_token: token });
+    searchResult = (!error && data && data.length > 0) ? data[0] : null;
+    history.replaceState(null, '', '/');
+    render();
+    return;
+  }
+
+  const wantsAcceso = path === '/acceso';
   const { data: { session } } = await sb.auth.getSession();
   if(session){
     const { data: rol } = await sb.rpc('mi_rol');
