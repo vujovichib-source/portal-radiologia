@@ -414,6 +414,7 @@ function renderAdmin(){
       <td class="dni">${escapeHtml(p.dni_ultimos4)}</td>
       <td class="dni">${p.token_acceso ? `<span class="copy-token" data-token="${escapeHtml(p.token_acceso)}" style="cursor:pointer; border-bottom:1px dashed var(--gold-deep);" title="Clic para copiar">${escapeHtml(p.token_acceso)}</span>` : `<span style="font-size:11px; color:var(--ink-dim); font-family:var(--mono);">Pendiente</span>`}</td>
       <td>${escapeHtml(p.estudio||'—')}</td>
+      <td>${p.celular ? escapeHtml(p.celular) : '—'}</td>
       <td>
         <div style="display:flex; align-items:center; gap:6px;">
           ${imgReady ? `<span style="font-size:11px; color:var(--green); font-family:var(--mono);">✓ Listo</span><a href="${escapeHtml(publicUrl(p.imagen_path))}" target="_blank" rel="noopener" style="color:var(--ink); font-size:12px;">Ver</a>` : `<span style="font-size:11px; color:var(--ink-dim); font-family:var(--mono);">Sin subir</span>`}
@@ -438,7 +439,7 @@ function renderAdmin(){
       </td>
     </tr>
   `;
-  }).join('') || `<tr class="empty-row"><td colspan="${myRole?9:8}">${q ? 'Ningún paciente coincide con la búsqueda.' : 'Todavía no cargaste ningún paciente.'}</td></tr>`;
+  }).join('') || `<tr class="empty-row"><td colspan="${myRole?10:9}">${q ? 'Ningún paciente coincide con la búsqueda.' : 'Todavía no cargaste ningún paciente.'}</td></tr>`;
 
   return `
     <div class="admin-panel">
@@ -460,7 +461,7 @@ function renderAdmin(){
             <input type="text" id="aCelular" inputmode="numeric" placeholder="3871234567" style="flex:1;" value="${editingPatient ? escapeHtml((editingPatient.celular||'').replace(/^\+549/,'')) : ''}">
           </div>
         </div>
-        <div class="field full"><label>Link privado de Google Drive (opcional, si no subís los archivos acá)</label><input type="text" id="aLink" placeholder="https://drive.google.com/..." value="${editingPatient ? escapeHtml(editingPatient.link_drive||'') : ''}"></div>
+
       </div>
       <button class="search-btn" id="addBtn" ${busy?'disabled':''}>${busy?'Guardando…':(editingPatient?'Guardar cambios':'Agregar paciente')}</button>
       ${editingPatient ? `<button id="cancelEditBtn" style="margin-top:20px; margin-left:10px; background:none; border:1px solid var(--line); color:var(--ink-dim); font-family:var(--sans); font-size:14px; padding:13px 20px; border-radius:5px; cursor:pointer;">Cancelar</button>` : ''}
@@ -476,7 +477,7 @@ function renderAdmin(){
         </div>
       </div>
       <table>
-        <thead><tr>${myRole ? `<th><input type="checkbox" id="selectAllCheck" ${filtered.length>0 && filtered.every(p=>selectedIds.has(p.id))?'checked':''}></th>` : ''}<th>Nombre</th><th>Apellido</th><th>DNI</th><th>Código</th><th>Estudio</th><th>Imagen</th><th>Informe</th><th></th></tr></thead>
+        <thead><tr>${myRole ? `<th><input type="checkbox" id="selectAllCheck" ${filtered.length>0 && filtered.every(p=>selectedIds.has(p.id))?'checked':''}></th>` : ''}<th>Nombre</th><th>Apellido</th><th>DNI</th><th>Código</th><th>Estudio</th><th>WhatsApp</th><th>Imagen</th><th>Informe</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -552,14 +553,18 @@ function bindAdminEvents(){
   if(aDniInput){ aDniInput.addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); }); }
   const aCelInput = document.getElementById('aCelular');
   if(aCelInput){ aCelInput.addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); }); }
+  ['aNombre','aApellido'].forEach(id => {
+    const inp = document.getElementById(id);
+    if(inp){ inp.addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); }); }
+  });
 
   document.getElementById('addBtn').onclick = async () => {
-    const nombre = document.getElementById('aNombre').value.trim();
-    const apellido = document.getElementById('aApellido').value.trim();
+    const nombre = document.getElementById('aNombre').value.trim().toUpperCase();
+    const apellido = document.getElementById('aApellido').value.trim().toUpperCase();
     const dniCompleto = document.getElementById('aDni').value.trim();
     const estudio = document.getElementById('aEstudio').value.trim();
     const fecha = document.getElementById('aFecha').value || null;
-    const link = document.getElementById('aLink').value.trim();
+    const link = null;
     const celRest = document.getElementById('aCelular').value.trim();
     const celular = celRest ? ('+549' + celRest) : null;
     if(!nombre || !apellido || dniCompleto.length < 4){
