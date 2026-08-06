@@ -175,6 +175,7 @@ let myRole = null; // 'admin' | 'staff' | null
 let patients = [];
 let editingId = null; // id del paciente que se está editando, o null
 let selectedIds = new Set(); // ids seleccionados para borrado múltiple
+let sentIds = new Set(); // ids a los que ya se les envió el aviso en esta sesión
 let staffQuery = '';
 let successMsg = '';
 let searchResult = undefined; // undefined = sin buscar, null = no encontrado, obj = encontrado
@@ -262,6 +263,7 @@ function renderPatient(){
       <div>
         <div class="who">${escapeHtml(searchResult.nombre)} ${escapeHtml(searchResult.apellido)}</div>
         <div class="meta">${escapeHtml(searchResult.estudio||'Estudio')} ${searchResult.fecha_estudio ? '· '+escapeHtml(searchResult.fecha_estudio) : ''} ${searchResult.dni_completo ? '· DNI '+escapeHtml(searchResult.dni_completo) : ''}</div>
+        ${searchResult.token_acceso ? `<div style="margin-top:6px; font-size:12px; color:var(--ink-dim);">Token de acceso: <span class="copy-token-paciente" data-token="${escapeHtml(searchResult.token_acceso)}" style="font-family:var(--mono); color:var(--ink); font-weight:600; cursor:pointer; border-bottom:1px dashed var(--gold-deep);" title="Clic para copiar">${escapeHtml(searchResult.token_acceso)}</span> · usalo con tu apellido para verlo desde otra PC</div>` : ''}
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         ${botonesImagenes}
@@ -361,6 +363,17 @@ function bindPatientEvents(){
   ['pApellido','pDni'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
   });
+  const copyTokenPaciente = document.querySelector('.copy-token-paciente');
+  if(copyTokenPaciente){
+    copyTokenPaciente.onclick = () => {
+      navigator.clipboard.writeText(copyTokenPaciente.dataset.token).then(() => {
+        const original = copyTokenPaciente.textContent;
+        copyTokenPaciente.textContent = '¡Copiado!';
+        setTimeout(() => { copyTokenPaciente.textContent = original; }, 1200);
+      });
+    };
+  }
+
   document.getElementById('privacyLink').onclick = (e) => {
     e.preventDefault();
     view = 'privacy';
@@ -452,7 +465,11 @@ function renderAdmin(){
         </div>
       </td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
-        ${imgReady && infReady ? `<button class="send-wa-btn" data-id="${p.id}" title="Enviar WhatsApp al paciente" style="background:#25D366; border:none; color:#fff; font-size:11px; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:600;">Enviar WhatsApp</button>` : ''}
+        ${imgReady && infReady ? (
+          sentIds.has(p.id)
+            ? `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--green); font-family:var(--mono); padding:5px 4px;">✓ Enviado</span>`
+            : `<button class="send-wa-btn" data-id="${p.id}" title="Enviar aviso al paciente" style="background:none; border:1px solid var(--line); color:var(--ink-dim); font-size:11px; padding:5px 10px; border-radius:4px; cursor:pointer; font-family:var(--mono);">Enviar aviso</button>`
+        ) : ''}
         <button class="edit-btn" data-id="${p.id}" style="background:none; border:1px solid var(--gold-deep); color:var(--green); font-size:11px; padding:5px 10px; border-radius:4px; cursor:pointer; font-family:var(--mono);">Editar</button>
         ${myRole ? `<button class="del-btn" data-id="${p.id}">Eliminar</button>` : ''}
       </td>
@@ -559,8 +576,9 @@ function bindAdminEvents(){
     errMsg=''; successMsg=''; busy = true; render();
     const { error } = await sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } });
     busy = false;
-    if(error){ errMsg = 'No se pudo enviar el WhatsApp. Probá de nuevo.'; render(); return; }
-    successMsg = 'WhatsApp enviado correctamente.';
+    if(error){ errMsg = 'No se pudo enviar el aviso. Probá de nuevo.'; render(); return; }
+    sentIds.add(patientId);
+    successMsg = 'Aviso enviado correctamente.';
     render();
   }
 
@@ -636,7 +654,7 @@ function bindAdminEvents(){
       const id = parseInt(btn.dataset.id, 10);
       const p = patients.find(x => x.id === id);
       const nombreCompleto = p ? `${p.nombre} ${p.apellido}` : 'este paciente';
-      if(!confirm(`¿Enviar el WhatsApp de aviso a ${nombreCompleto}?`)) return;
+      if(!confirm(`¿Enviar el aviso a ${nombreCompleto}?`)) return;
       enviarWhatsapp(id);
     };
   });
