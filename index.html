@@ -263,7 +263,7 @@ function renderPatient(){
       <div>
         <div class="who">${escapeHtml(searchResult.nombre)} ${escapeHtml(searchResult.apellido)}</div>
         <div class="meta">${escapeHtml(searchResult.estudio||'Estudio')} ${searchResult.fecha_estudio ? '· '+escapeHtml(searchResult.fecha_estudio) : ''} ${searchResult.dni_completo ? '· DNI '+escapeHtml(searchResult.dni_completo) : ''}</div>
-        ${searchResult.token_acceso ? `<div style="margin-top:6px; font-size:12px; color:var(--ink-dim);">Token de acceso: <span class="copy-token-paciente" data-token="${escapeHtml(searchResult.token_acceso)}" style="font-family:var(--mono); color:var(--ink); font-weight:600; cursor:pointer; border-bottom:1px dashed var(--gold-deep);" title="Clic para copiar">${escapeHtml(searchResult.token_acceso)}</span> · usalo con tu apellido para verlo desde otra PC</div>` : ''}
+        ${searchResult.token_acceso ? `<div style="margin-top:6px; font-size:12px; color:var(--ink-dim);">Token de acceso: <span class="copy-token-paciente" data-token="${escapeHtml(searchResult.token_acceso)}" style="font-family:var(--mono); color:var(--ink); font-weight:600; cursor:pointer; border-bottom:1px dashed var(--gold-deep);" title="Clic para copiar">${escapeHtml(searchResult.token_acceso)}</span> · Usalo con tu apellido para verlo desde otro dispositivo.</div>` : ''}
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         ${botonesImagenes}
