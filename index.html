@@ -243,21 +243,31 @@ function viewUrl(path){
 function renderPatient(){
   let resultHtml = '';
   if(searchResult === null){
-    resultHtml = `<div class="result"><div class="not-found">No encontramos ningún estudio con esos datos. Revisá el apellido y el código de acceso, o comunicate con el centro.</div></div>`;
+    resultHtml = `<div class="result"><div class="not-found">
+      No encontramos ningún estudio con esos datos. Revisá el apellido y el código de acceso.<br><br>
+      <a href="https://wa.me/5493872177560?text=${encodeURIComponent('Hola, no encuentro mi código de acceso al portal de pacientes. ¿Me ayudan?')}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; background:#25D366; color:#fff; text-decoration:none; font-weight:600; font-size:13px; padding:9px 16px; border-radius:100px;">¿No tenés tu código? Escribinos por WhatsApp</a>
+    </div></div>`;
   } else if(searchResult){
-    const imgUrl = publicUrl(searchResult.imagen_path);
+    const letras = 'ABCDEFGHIJ';
+    const imagenes = (searchResult.imagenes_paths && searchResult.imagenes_paths.length > 0)
+      ? searchResult.imagenes_paths
+      : (searchResult.imagen_path ? [searchResult.imagen_path] : []);
     const infUrl = viewUrl(searchResult.informe_path);
-    const legacyUrl = (!imgUrl && !infUrl && searchResult.link_drive) ? searchResult.link_drive : null;
+    const legacyUrl = (imagenes.length === 0 && !infUrl && searchResult.link_drive) ? searchResult.link_drive : null;
+    const botonesImagenes = imagenes.map((path, i) => {
+      const etiqueta = imagenes.length > 1 ? `Imagen ${letras[i] || (i+1)}` : 'Ver imagen';
+      return `<a href="${escapeHtml(publicUrl(path))}" target="_blank" rel="noopener">${etiqueta} →</a>`;
+    }).join('');
     resultHtml = `<div class="result"><div class="result-card">
       <div>
         <div class="who">${escapeHtml(searchResult.nombre)} ${escapeHtml(searchResult.apellido)}</div>
         <div class="meta">${escapeHtml(searchResult.estudio||'Estudio')} ${searchResult.fecha_estudio ? '· '+escapeHtml(searchResult.fecha_estudio) : ''} ${searchResult.dni_completo ? '· DNI '+escapeHtml(searchResult.dni_completo) : ''}</div>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        ${imgUrl ? `<a href="${escapeHtml(imgUrl)}" target="_blank" rel="noopener">Ver imagen →</a>` : ''}
+        ${botonesImagenes}
         ${infUrl ? `<a href="${escapeHtml(infUrl)}" target="_blank" rel="noopener">Ver informe →</a>` : ''}
         ${legacyUrl ? `<a href="${escapeHtml(legacyUrl)}" target="_blank" rel="noopener">Ver estudio →</a>` : ''}
-        ${!imgUrl && !infUrl && !legacyUrl ? `<span style="font-family:var(--mono); font-size:12px; color:var(--ink-dim);">Todavía no se cargaron archivos para este estudio.</span>` : ''}
+        ${imagenes.length===0 && !infUrl && !legacyUrl ? `<span style="font-family:var(--mono); font-size:12px; color:var(--ink-dim);">Todavía no se cargaron archivos para este estudio.</span>` : ''}
       </div>
     </div></div>`;
   }
@@ -278,6 +288,9 @@ function renderPatient(){
       <button class="search-btn" id="searchBtn" ${busy?'disabled':''}>${busy?'Buscando…':'Buscar mi estudio'}</button>
       ${resultHtml}
       <div class="disclaimer"><div class="dot"></div><div>El código de acceso es único y privado para tu estudio. Si tenés dudas sobre la privacidad de tu información, contactate directamente con el centro.</div></div>
+      <div style="margin-top:14px;">
+        <a href="https://wa.me/5493872177560?text=${encodeURIComponent('Hola, necesito el código de acceso para ver mi estudio.')}" target="_blank" rel="noopener" style="font-size:12.5px; color:var(--green); font-weight:600; text-decoration:none;">¿No tenés tu código de acceso? Escribinos por WhatsApp →</a>
+      </div>
     </div>
     <div class="divider"><div class="line"></div><div class="mark"></div><div class="line"></div></div>
     <div class="services">
@@ -403,8 +416,10 @@ function renderAdmin(){
     normalize(p.nombre).includes(q) || normalize(p.apellido).includes(q) ||
     (p.dni_ultimos4||'').includes(q) || (p.dni_completo||'').includes(q)
   ) : patients;
+  const letras = 'ABCDEFGHIJ';
   const rows = filtered.map(p => {
-    const imgReady = !!p.imagen_path;
+    const imagenesP = (p.imagenes_paths && p.imagenes_paths.length > 0) ? p.imagenes_paths : (p.imagen_path ? [p.imagen_path] : []);
+    const imgReady = imagenesP.length > 0;
     const infReady = !!p.informe_path;
     return `
     <tr>
@@ -416,11 +431,14 @@ function renderAdmin(){
       <td>${escapeHtml(p.estudio||'—')}</td>
       <td>${p.celular ? escapeHtml(p.celular) : '—'}</td>
       <td>
-        <div style="display:flex; align-items:center; gap:6px;">
-          ${imgReady ? `<span style="font-size:11px; color:var(--green); font-family:var(--mono);">✓ Listo</span><a href="${escapeHtml(publicUrl(p.imagen_path))}" target="_blank" rel="noopener" style="color:var(--ink); font-size:12px;">Ver</a>` : `<span style="font-size:11px; color:var(--ink-dim); font-family:var(--mono);">Sin subir</span>`}
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          ${imgReady
+            ? `<span style="font-size:11px; color:var(--green); font-family:var(--mono);">✓ ${imagenesP.length}</span>` +
+              imagenesP.map((path,i) => `<a href="${escapeHtml(publicUrl(path))}" target="_blank" rel="noopener" style="color:var(--ink); font-size:12px;">${letras[i]||(i+1)}</a>`).join('')
+            : `<span style="font-size:11px; color:var(--ink-dim); font-family:var(--mono);">Sin subir</span>`}
           <label class="file-btn" style="font-size:11px; border:1px solid var(--line); color:var(--ink-dim); padding:4px 8px; border-radius:4px; cursor:pointer; font-family:var(--mono);">
-            ${imgReady?'Reemplazar':'Subir'}
-            <input type="file" class="upload-imagen" data-id="${p.id}" accept="image/*" style="display:none;">
+            ${imgReady?'Agregar':'Subir'}
+            <input type="file" class="upload-imagen" data-id="${p.id}" accept="image/*" multiple style="display:none;">
           </label>
         </div>
       </td>
@@ -514,26 +532,45 @@ function bindAdminEvents(){
     const path = randomPath(patientId, file.name);
     const { error: upErr } = await sb.storage.from('informes').upload(path, file, { upsert: false, cacheControl: '3600' });
     if(upErr){ busy=false; errMsg = 'No se pudo subir el archivo: ' + upErr.message; render(); return; }
-    const args = kind === 'imagen'
-      ? { p_id: patientId, p_imagen_path: path, p_informe_path: null }
-      : { p_id: patientId, p_imagen_path: null, p_informe_path: path };
-    const { error: rpcErr } = await sb.rpc('actualizar_archivos', args);
+    const { error: rpcErr } = await sb.rpc('actualizar_archivos', { p_id: patientId, p_imagen_path: null, p_informe_path: path });
     busy = false;
     if(rpcErr){ errMsg = 'El archivo se subió pero no se pudo vincular al paciente.'; render(); return; }
-    successMsg = kind === 'imagen' ? 'Imagen subida correctamente.' : 'Informe subido correctamente.';
+    successMsg = 'Informe subido correctamente.';
 
-    // Si con este archivo ya quedaron los dos (imagen + informe), avisamos al paciente por WhatsApp
     const actualizado = patients.find(p => p.id === patientId);
-    const yaTeniaElOtro = actualizado && (kind === 'imagen' ? actualizado.informe_path : actualizado.imagen_path);
-    if(yaTeniaElOtro){
+    const teniaImagenes = actualizado && ((actualizado.imagenes_paths && actualizado.imagenes_paths.length > 0) || actualizado.imagen_path);
+    if(teniaImagenes){
       sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } }).catch(() => {});
     }
 
     await loadPatients();
   }
 
+  async function uploadImagenes(patientId, files){
+    errMsg=''; successMsg=''; busy = true; render();
+    let subidas = 0;
+    for(const file of files){
+      const path = randomPath(patientId, file.name);
+      const { error: upErr } = await sb.storage.from('informes').upload(path, file, { upsert: false, cacheControl: '3600' });
+      if(upErr){ errMsg = 'Alguna imagen no se pudo subir: ' + upErr.message; continue; }
+      const { error: rpcErr } = await sb.rpc('agregar_imagen', { p_id: patientId, p_path: path });
+      if(!rpcErr) subidas++;
+    }
+    busy = false;
+    successMsg = subidas > 0 ? `${subidas} imagen(es) subida(s) correctamente.` : successMsg;
+
+    if(subidas > 0){
+      const actualizado = patients.find(p => p.id === patientId);
+      if(actualizado && actualizado.informe_path){
+        sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } }).catch(() => {});
+      }
+    }
+
+    await loadPatients();
+  }
+
   document.querySelectorAll('.upload-imagen').forEach(inp => {
-    inp.onchange = () => { if(inp.files[0]) uploadFor(parseInt(inp.dataset.id,10), 'imagen', inp.files[0]); };
+    inp.onchange = () => { if(inp.files.length > 0) uploadImagenes(parseInt(inp.dataset.id,10), Array.from(inp.files)); };
   });
   document.querySelectorAll('.upload-informe').forEach(inp => {
     inp.onchange = () => { if(inp.files[0]) uploadFor(parseInt(inp.dataset.id,10), 'informe', inp.files[0]); };
