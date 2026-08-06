@@ -466,7 +466,7 @@ function renderAdmin(){
       </td>
       <td style="display:flex; gap:6px; flex-wrap:wrap;">
         ${imgReady && infReady ? (
-          sentIds.has(p.id)
+          p.aviso_enviado
             ? `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--green); font-family:var(--mono); padding:5px 4px;">✓ Enviado</span>`
             : `<button class="send-wa-btn" data-id="${p.id}" title="Enviar aviso al paciente" style="background:none; border:1px solid var(--line); color:var(--ink-dim); font-size:11px; padding:5px 10px; border-radius:4px; cursor:pointer; font-family:var(--mono);">Enviar aviso</button>`
         ) : ''}
@@ -575,11 +575,11 @@ function bindAdminEvents(){
   async function enviarWhatsapp(patientId){
     errMsg=''; successMsg=''; busy = true; render();
     const { error } = await sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } });
+    if(error){ busy=false; errMsg = 'No se pudo enviar el aviso. Probá de nuevo.'; render(); return; }
+    await sb.rpc('marcar_aviso_enviado', { p_id: patientId });
     busy = false;
-    if(error){ errMsg = 'No se pudo enviar el aviso. Probá de nuevo.'; render(); return; }
-    sentIds.add(patientId);
     successMsg = 'Aviso enviado correctamente.';
-    render();
+    await loadPatients();
   }
 
   document.querySelectorAll('.upload-imagen').forEach(inp => {
