@@ -451,7 +451,8 @@ function renderAdmin(){
           </label>
         </div>
       </td>
-      <td style="display:flex; gap:6px;">
+      <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${imgReady && infReady ? `<button class="send-wa-btn" data-id="${p.id}" title="Enviar WhatsApp al paciente" style="background:#25D366; border:none; color:#fff; font-size:11px; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:600;">Enviar WhatsApp</button>` : ''}
         <button class="edit-btn" data-id="${p.id}" style="background:none; border:1px solid var(--gold-deep); color:var(--green); font-size:11px; padding:5px 10px; border-radius:4px; cursor:pointer; font-family:var(--mono);">Editar</button>
         ${myRole ? `<button class="del-btn" data-id="${p.id}">Eliminar</button>` : ''}
       </td>
@@ -536,13 +537,6 @@ function bindAdminEvents(){
     busy = false;
     if(rpcErr){ errMsg = 'El archivo se subió pero no se pudo vincular al paciente.'; render(); return; }
     successMsg = 'Informe subido correctamente.';
-
-    const actualizado = patients.find(p => p.id === patientId);
-    const teniaImagenes = actualizado && ((actualizado.imagenes_paths && actualizado.imagenes_paths.length > 0) || actualizado.imagen_path);
-    if(teniaImagenes){
-      sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } }).catch(() => {});
-    }
-
     await loadPatients();
   }
 
@@ -558,15 +552,16 @@ function bindAdminEvents(){
     }
     busy = false;
     successMsg = subidas > 0 ? `${subidas} imagen(es) subida(s) correctamente.` : successMsg;
-
-    if(subidas > 0){
-      const actualizado = patients.find(p => p.id === patientId);
-      if(actualizado && actualizado.informe_path){
-        sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } }).catch(() => {});
-      }
-    }
-
     await loadPatients();
+  }
+
+  async function enviarWhatsapp(patientId){
+    errMsg=''; successMsg=''; busy = true; render();
+    const { error } = await sb.functions.invoke('notificar-whatsapp', { body: { paciente_id: patientId } });
+    busy = false;
+    if(error){ errMsg = 'No se pudo enviar el WhatsApp. Probá de nuevo.'; render(); return; }
+    successMsg = 'WhatsApp enviado correctamente.';
+    render();
   }
 
   document.querySelectorAll('.upload-imagen').forEach(inp => {
@@ -635,6 +630,16 @@ function bindAdminEvents(){
   if(cancelBtn){
     cancelBtn.onclick = () => { editingId = null; errMsg=''; successMsg=''; render(); };
   }
+
+  document.querySelectorAll('.send-wa-btn').forEach(btn => {
+    btn.onclick = () => {
+      const id = parseInt(btn.dataset.id, 10);
+      const p = patients.find(x => x.id === id);
+      const nombreCompleto = p ? `${p.nombre} ${p.apellido}` : 'este paciente';
+      if(!confirm(`¿Enviar el WhatsApp de aviso a ${nombreCompleto}?`)) return;
+      enviarWhatsapp(id);
+    };
+  });
 
   document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.onclick = () => {
@@ -710,7 +715,6 @@ async function init(){
     render();
     const { data, error } = await sb.rpc('buscar_por_token', { p_token: token });
     searchResult = (!error && data && data.length > 0) ? data[0] : null;
-    history.replaceState(null, '', '/');
     render();
     return;
   }
